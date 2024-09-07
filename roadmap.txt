@@ -1,0 +1,387 @@
+1 - SETUP DJANGO PROJECT WORKSPACE
+1.1 - criar uma pasta para backend
+1.2 - criar uma pasta para frontend
+1.3 - criar um ambiente virtual no backend: python -m venv (nome)
+1.4 - instalar o django, djangorestframework, djangorestframework-simplejwt, PyJWT, django-cors-headers nesse ambiente
+1.5 - criar o projeto django: django-admin startproject (nomeprojeto)
+1.6 - criar as recomendações com pip freeze > requirements.txt
+1.7 - criar apps na pasta onde fica o manage.py: python manage.py startapp (appname) (nesse caso: api, customer, store, userauths e vendor)
+1.8 - criar um .gitignore e adicionar o (nomeambientevirtual) nele
+1.9 - inserir os apps em "settings.py" dentro do projeto criado (linha 5)
+1.10 - rodar o servidor pra ver se tá tudo tranquilo: python manage.py runserver
+1.11 - executamos as migrações: python manage.py migrate (verificar o que o migrate faz)
+1.12 -> 1.10 e agora podemos acessar novos endpoints como /admin
+1.13 - Instalamos o django jazzmin -> pip install django-jazzmin
+1.14 - em "INSTALLED_APPS" de settings.py, inserimos 'jazzmin', acima de todos (ela serve como um "melhoramento" para o django admin)
+1.15 - criamos o superusuário: python manage.py createsuperuser "padrão*" senha
+1.16 -> 1.10
+1.17 - Adicionamos mais algumas configurações em "settings.py" sobre o jazzmin:
+    JAZZMIN_SETTINGS = {
+        'site_title': "Nome site",
+        'site_header': "Header site", 
+        'site_brand': "Mensagem de saudação",
+        'welcome_sign': "Mensagem de saudação na tela de login",
+        'copyright': "@P3dru 2024",
+        'show_sidebar':"True",
+        'show_ui_builder':"True", (ara alterar temas facilmente, ele gera o código de temas que podemos inserir no settings)
+    }
+    Dar outra olhada na documentação do jazzmin para descobrir novas coisas
+1.18 - Configurando arquivos estáticos e arquivos de mídia:
+    Em "settings.py", existe a const "STATIC_URL" = 'static/'
+    Criamos STATICFILES_DIRS = [BASE_DIR, 'static'] e STATIC_ROOT = BASE_DIR / 'staticfiles', sempre que quisermos usar um arquivo estático, temos que criar ele na pasta 'static' que criaremos no próximo passo,
+    nessa pasta temos todo o CSS, JS e imagens que precisaremos para o aplicativo funcionar.
+    Dentro da pasta "backend" (a superior), criamos uma pasta chamada static para 
+    Criamos a const MEDIA_URL = 'media/', para arquivos que possam mudar (como por exemplo, um usuário insere uma nova foto de perfil),
+    Criamos MEDIA_ROOT = BASE_DIR / 'media', novamente, criamos uma nova pasta em "backend" (superior) com o mesmo propósito para quem quiser usar no próximo um arquivo dinâmico / media
+1.19 - Em 'urls.py', configuramos as urls para setar as alterações 'static' e 'media':
+    ...
+    from django.conf import settings
+    from django.conf.urls.static import static
+    ...
+    
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+    com isso, inserirmos uma nova URL para as os arquivos estáticos e os dinâmicos para que o django possa lidar com eles
+    assim, toda vez que o usuário buscar algum arquivo de mídia ou estático, o django irá buscar nas urls/pastas que foram criadas (media ou static)
+
+2 - Setup React Project WORKSPACE
+2.1 - instalar o React
+2.2 - acessar o frontend (cd frontend)
+2.3 - npm install --global yarn (opcional)
+2.4 - npm create vite . --template react (para criar um template react com vite)
+2.5 - npm install axios dayjs jwt-decode js-cookie react-router-dom zustand (axios -> para comunicação, dayjs -> calcula tempo e data, jwt-decode -> para decodificar o acesso e o refresh token, js-cookie -> para ter acesso aos tokens
+salvos em cookie, router-dom -> para maniputar o dom e zustand -> para gerenciamento de estados)
+2.6 - npm run dev (para iniciar o servidor)
+
+3 - Django User, Profile models and Signals 
+3.1 - Em "userauths/models.py":
+    ...
+    from django.contrib.auth.models import AbstractUser (ver o que é)
+
+    class User(AbstractUser):
+        username = models.Charfield(unique=True, max_lenght=100)
+        email = models.EmailField(unique=True)
+        full_name = models.Charfield(max_lenght = 100, null = True, blank = True) (verificar o que é)
+        phone = models.Charfield(max_lenght = 100, null = True, blank = True)
+
+        USERNAME_FIELD = 'email' (para que o usuário coloque o seu email como username, para ser "profissional")
+        REQUIRED_FIELDS = ['username']
+
+        def __str__(self):
+            return self.email
+
+        def save(self, *args, **kwargs): (relembrar o que é isso)
+            email_username, mobile = self.email.split("@")
+            if self.full_name == "" or self.full_name == None:
+                self.full_name = email_username (setamos o nome completo como o e-mail "splitado" caso o full_name não seja inserido)
+            if self.username == "" or self.username == None:
+                self.username = email_username (setamos o username como o e-mail "splitado" caso o full_name não seja inserido)
+
+            super(User, self).save(*args, **kwargs)
+
+    
+    class Profile(Models.Model):
+        user = models.OneToOneField(User, on_delete=models.CASCADE)
+        image = models.FileField(upload_to="image", default="default/default-user.jpg", null = True, blank = True)
+        full_name = models.CharField(max_length=100, null=True, blank=True)
+        about = models.TextField(null=True, blank=True)
+        gender = models.Charfield(max_length=100, null=True, blank=True)
+        country = models.Charfield(max_length=100, null=True, blank=True)
+        state = models.Charfield(max_length=100, null=True, blank=True)
+        city = models.Charfield(max_length=100, null=True, blank=True)
+        address = models.Charfield(max_length=100, null=True, blank=True)
+        date = models.DateTimeField(auto_now_add=True)         
+
+3.2 - Ativar o ambiente virtual
+3.3 - pip install shortuuid
+3.4 - Em "userauths/models.py":
+    ...
+    from shortuuid.django_fields import ShortUUIDField
+
+    ...
+    class Profile(models.Model):
+        ...
+        pid = ShortUUIDField(unique=True, length=10, max_lenght=20, alphabet="abcdefghijklmnopqrstuvwxyz") (para criar um "id" só que de perfil que pode utilizar as letras que tem limite de 20 caracteres e que pode usar as letras inseridas)
+
+        (para previnir erros, se o nome da "profile" estiver vazio, retirn o full_name do user que está vinculado à essa profile)
+        def __str__(self):
+            if self.full_name:
+                return str(self.full_name)
+            else:
+                return str(self.user.full_name)
+        
+        def save(self, *args, **kwargs):
+            if self.full_name == "" or self.full_name == None:
+                self.full_name = self.user.full_name
+            
+            super(Profile, self).save(*args, **kwargs)
+
+3.5 - Em "userauths/admin.py":
+
+    ...
+    from userauths.models import Profile, User
+
+    (Pesquisar o que isso faz)
+    admin.site.register(User)
+    admin.site.register(Profile)
+
+3.6 - Realizar a migração -> python manage.py makemigrations e logo após python manage.py migrate
+3.7 - Em "settings.py":
+    ...
+    MEDIA_ROOT = BASE_DIR / 'media'
+
+    (verificar o pq é preciso fazer isso)
+    AUTH_USER_MODEL = 'userauths.User'
+3.8 - Caso dê algum bug, comentar em "settings.py" o 'jazzmin' e o 'django.contrib.admin' e em "urls.py", comentar o 'path('admin/', admin.site.urls), realizar o migrate e depois descomentar e rodar o servidor
+3.9 - Criar novamente um novo superuser (caso necessário)
+3.10 - Rodar o servidor.
+3.11 - Em "userauths/models.py":
+    ...
+    from django.db.models.signals import post_save (o que são signals?)
+
+    ...
+    (abaixo de todo o código)
+    (Assim que o user/sender é criado automaticamente um profile, e quando o user_model é salvo, automaticamente salva o profile que foi criado para o usuário)(rever)
+    def create_user_profile(sender, instance, created, **kwargs):
+        if created:
+            Profile.objects.create(user=instance)
+
+    def save_user_profile(sender, instance, **kwargs):
+        instance.profile.save()
+    
+    post_save.connect(create_user_profile, sender=User)
+    post_save.connect(save_user_profile, sender=User)
+3.12 - Podemos criar novos superusers para testar as novas funcionalidades (1.15)
+3.13 - Em "userauths/admin.py":
+    ...
+    (Os tópicos abaixo mudarão o que aparecerá nas exibições dos usuários)
+    class UserAdmin(admin.ModelAdmin):
+        list_display = ['full_name', 'email', 'phone']
+
+    class ProfileAdmin(admin.ModelAdmin):
+        list_display = ['full_name', 'gender', 'country']
+        list_editable = ['gender', 'country'] (para editar os usuários)
+        search_fields = ['full_name', 'date'] (para criar filtros de pesquisas)
+        list_filters = ['date'] (para filtrar as pesquisas por um critério)
+
+        (Lembrando que todos os argumentos passados são de atributos dos objetos criados nos models)
+    
+    admin.site.register(User, UserAdmin)
+    admin.site.register(Profile, ProfileAdmin)
+3.14 - Na pasta "userauths", crie "serializer.py":  (O que são serializers?) (o que isso tudo significa? (Pesquisar no chat))
+    from rest_framework import serializers
+    from userauths.models import Profile, User
+
+    class UserSerializer(serializers.ModelSerializer):
+        
+        class Meta:
+            model = User
+            fields = "__all__"
+    
+
+    class ProfileSerializer(serializers.ModelSerializer):
+        user = UserSerializer()
+
+        class Meta:
+            model = Profile
+            fields = "__all__"
+        
+        
+        (Define um método que chama uma representação, tem dois argumentos, self e instance onde o self
+        se refere à instância da classe que criamos enquanto a intância se refere ao objeto que foi serializado
+        que no caso é a profile)
+        def to_representation(self, instance):
+            response = super().to_representation(instance)
+            response['user'] = UserSerializer(instance.user).data
+            return response
+
+4 - Authentication with jwt
+4.1 - Em "userauths/serializers.py":
+    ...
+    from rest_framework_simplejtw.serializers import TokenObtainPairSerializer
+
+
+    class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+        @classmethod
+        def get_token(cls, user):
+            token = super().get_token(user)
+
+            token['full_name'] = user.full_name
+            token['email'] = user.email
+            token['username'] = user.username
+            try:
+                token['vendor_id'] = user.vendor.id (ainda não temos o vendor model)
+            except:
+                token['vendor_id'] = 0
+            
+            return token
+    
+    ...
+4.2 - Criamos um serializer para registro, ainda em "userauths/serializers.py", abaixo da class MyTokenPairSerialzier:
+    from django.contrib.auth.password_validation import validate_password
+    ...
+    class RegisterSerializer(serializers.ModelSerializer):
+        password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+        password2 = serializers.CharField(write_only=True, required=True)
+
+
+        class Meta:
+            model = User
+            fields = ['full_name', 'email', 'phone', 'password', 'password2']
+        
+        def validate(self, attrs):
+            if attrs['password'] != attrs['password2']:
+                raise serializers.ValidationError({"password": "Passwords does not match"})
+            return attrs
+        
+        def create(self, validated_data):
+            user = User.objects.create(
+                full_name=validated_data['full_name'],
+                email=validated_data['email'],
+                phone=validated_data['phone'],
+            )
+
+            email_user, mobile = user.email.split("@")
+            user.username = email_user
+            user.set_password(validated_data['password'])
+            #user.set_password(validate_password['password'])
+            user.save()
+            return user
+
+4.3 - Em "userauths/views.py":
+    from django.shortcuts import render
+    from rest_framework_simplejtw.views import TokenObtainPairView
+    fromm userauths.models import User, Profile
+    from userauths.serializer import MyTokenObtainPairSerializer, RegisterSerializer
+
+    class MyTokenObtainPairView(TokenObtainPairView):
+        serializer_class = MyTokenObtainPairSerializer
+4.4 - Em "api/urls.py" (criar arquivo):
+    from django.urls import path
+    from userauths import views as userauths_views
+    from store import views as store_views
+
+    urlpatterns = [
+        path('user/token/', userauths_views.MyTokenObtainPairView.as_view())
+    ]
+4.5 - Em "backend/urls.py":
+    ...
+    from django.urls import path, include
+    ...
+
+    urlpatterns = [
+        path('admin/', admin.site.urls),
+        path('api/v1/', include('api.urls'))
+    ]
+4.6 - Em "backend/settings.py":
+    from pathlib import Path
+    from datetime import timedelta
+    ...
+
+    INSTALLED_APPS = [
+        ...
+        #Third Party apps
+        'rest_framework',
+        'rest_framework_simplejwt.token_blacklist',
+    ]
+
+    ...
+    DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+    SIMPLE_JWT = {
+        'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+        'REFRESH_TOKEN_LIFETIME': timedelta(days=50),
+        'BLACKLIST_AFTER_ROTATION': True,
+        'ROTATE_REFRESH_TOKENS': True,
+        'UPDATE_LAST_LOGIN': False,
+
+        'ALGORITHM': 'HS256',
+
+        'VERIFYING_KEY': None,
+        'AUDIENCE': None,
+        'ISSUER': None,
+        'JWT_URL': None,
+        'LEEWAY': 0,
+
+        'AUTH_HEADER_TYPES': ('Bearer', ),
+        'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+        'USER_ID_FIELD': 'id',
+        'USER_ID_CLAIM': 'user_id',
+        'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
+
+        'AUTH_TOKEN_CLASSES': ('rest_framework_simplejtw.token.AccessToken',),
+        'TOKEN_TYPE_CLAIM': 'token_type',
+        'TOKEN_USER_CLASS': 'rest_framework_simplejwt.models.TokenUser',
+
+        'JTI_CLAIM': 'jti',
+        
+        'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
+        'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
+        'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
+    }
+4.7 - Realizar as migrations: python manage.py makemigrations
+4.8 - python manage.py migrate
+4.9 - python manage.py runserver
+4.10 - podemos jogar o token no jwt.io para verificar o que aparecerá (ver como pegar esses dados e fazer testes)
+4.11 - Em "userauths/views.py":
+    ...
+    from rest_framework import generics
+    from rest_framework.permissions import IsAuthenticated, AllowAny
+    ...
+    (abaixo de MyTokenObtainPairView)
+    class RegisterView(generics.CreateAPIView):
+        queryset = User.objects.all()
+        permission_classes = (AllowAny, )
+        serializer_class = RegisterSerializer
+4.12 - Em "api/urls.py":
+    from django.urls import path
+    from userauths import views as userauths_views
+    from store import views as store_views
+
+    urlpatterns = [
+        path('user/token/', userauths_views.MyTokenObtainPairView.as_view()),
+        path('user/register/', userauths_views.RegisterView.as_view())
+    ]
+4.13 - criamos um novo usuário
+4.14 - realizar testes de CRUD e tokens (especificar melhor com base no video)
+
+5 - API Documentation:
+5.1 - pip install drf-yasg
+5.2 - Em "backend/settings.py":
+...
+INSTALLED_APPS = [
+    ...
+    #third party apps
+    ...
+    'drf_yasg',
+]
+5.3 - Em "backend/urls.py":
+    ...
+    from rest_framework import permissions
+    from drf_yasg.views import get_schema_view
+    from drf_yasg import open_api
+
+    schema_view = get_schema_view(
+        openapi.Info(
+            title="E-commerce backend APIs",
+            default_version="v1",
+            description="This is the documentation for the back",
+            #terms_of_service="colocar link de termos se tiver",
+            contact=openapi.Contact(email="colocar o email de contato"),
+            license=openapi.License(name="BSD Licence"),
+        ),
+        public=True,
+        permission_classes = (permissions.AllowAny, )
+    )
+    ...
+
+    urlpatterns = [
+        ...
+        #documentation
+        path("", schema_view.with_ui("swagger", cache_timeout=0), name="schema-swagger-ui")
+    ]
+
+    urlpatterns += ...
+    urlpatterns += ...
+5.4 - Rodar o servidor
